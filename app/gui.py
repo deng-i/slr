@@ -1,12 +1,14 @@
 import os
 import shutil
 import threading
-
+import numpy as np
+import time
+from collections import deque
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import cv2
 import tkinter as tk
-from tkinter import ttk
+# from tkinter import ttk
 
 ctk.set_appearance_mode("Dark")
 
@@ -27,19 +29,20 @@ class App(ctk.CTk):
         self.container.rowconfigure(0, weight=1)
         self.container.columnconfigure(0, weight=1)
 
+        # create data folder if first start
+        self.cwd = os.getcwd()
+        self.data = "../data"
+        if not os.path.exists(self.data):
+            os.mkdir(self.data)
+
         self.frames = {}
         for frame in (MenuFrame, RecordFrame, AddFrame, IdentifyFrame):
             frame_name = frame.__name__
             new_frame = frame(parent=self.container, controller=self)
             self.frames[frame_name] = new_frame
             new_frame.grid(row=0, column=0, sticky="nsew")
-
-        # create data folder if first start
-        self.cwd = os.getcwd()
-        self.data = "../data"
-        if not os.path.exists(self.data):
-            os.mkdir(self.data)
         self.show_frame("MenuFrame")
+
 
     def show_frame(self, frame_name):
         frame = self.frames[frame_name]
@@ -50,7 +53,6 @@ class App(ctk.CTk):
         #    # create new folder for each sign
         # (optional) get the important part of the video
         # fine-tune model with new videos
-
         pass
 
     def identify_sign(self):
@@ -85,7 +87,7 @@ class MenuFrame(ctk.CTkFrame):
         identify_sign_button.grid(row=2, column=0, sticky="nsew")
 
         new_user_button = ctk.CTkButton(master=self, text="New user", command=self.new_user)
-        new_user_button.grid(row=3, column=0) #, sticky="nsew")
+        new_user_button.grid(row=3, column=0)  # , sticky="nsew")
 
     def new_user(self):
         # delete previous videos
@@ -100,7 +102,6 @@ class RecordFrame(ctk.CTkFrame):
 
         # used for capturing video
         self.running = False
-        self.after_id = None
         self.last_frame = None
 
         self.grid(row=0, column=0)
@@ -115,6 +116,7 @@ class RecordFrame(ctk.CTkFrame):
         self.webcam_label.grid(row=1, column=0)
 
         # counter for how many samples there are
+        ctk.CTkLabel(self, text="Number of samples:").grid(row=0, column=1)
         self.sample_num = "0/5"
         self.counter = ctk.CTkLabel(self, text=self.sample_num)
         self.counter.grid(row=1, column=1)
@@ -126,8 +128,14 @@ class RecordFrame(ctk.CTkFrame):
                                                 state="disabled")
         self.stop_record_button.grid(row=3, column=1)
 
-        menu_button = ctk.CTkButton(self, text="Back to menu", command=lambda: controller.show_frame("MenuFrame"))
+        menu_button = ctk.CTkButton(self, text="Back to menu", command=self.back_to_menu)
         menu_button.grid(row=2, column=0)
+
+    def back_to_menu(self):
+        self.sign_name.configure(state="normal")
+        self.sample_num = "0/5"
+        self.counter.configure(text=self.sample_num)
+        self.controller.show_frame("MenuFrame")
 
     def start_recording(self):
         self.running = True
@@ -135,6 +143,7 @@ class RecordFrame(ctk.CTkFrame):
         thread.start()
         self.update_frame()
 
+        self.sign_name.configure(state="disabled")
         self.start_record_button.configure(state="disabled")
         self.stop_record_button.configure(state="normal")
 
@@ -187,18 +196,94 @@ class AddFrame(ctk.CTkFrame):
         self.controller = controller
         self.grid(row=0, column=0)
 
-        var = tk.StringVar()
+        # used for capturing video
+        self.running = False
+        self.last_frame = None
+        self.existing_num = 0
 
-        def print_value():
-            print(var.get())
+        self.var = tk.StringVar()
+        i = 0
+        for file in os.listdir(controller.data):
+            ctk.CTkRadioButton(self, text=file, variable=self.var, value=file).grid(row=i, column=0)
+            i += 1
 
-        button1 = ctk.CTkRadioButton(self, text="Option 1", variable=var, value="opt1").grid(row=0, column=0)
-        button2 = ctk.CTkRadioButton(self, text="Option 2", variable=var, value="opt2").grid(row=1, column=0)
+        # webcam
+        self.webcam_label = ctk.CTkLabel(self)
+        self.webcam_label.grid(row=2, column=0)
 
-        ok_button = ctk.CTkButton(self, text="OK", command=print_value).grid(row=2, column=0)
+        # counter for how many samples there are
+        ctk.CTkLabel(self, text="Number of samples:").grid(row=0, column=1)
+        self.sample_num = "0/5"
+        self.counter = ctk.CTkLabel(self, text=self.sample_num)
+        self.counter.grid(row=1, column=1)
 
-        menu_button = ctk.CTkButton(self, text="Back to menu", command=lambda: controller.show_frame("MenuFrame"))
-        menu_button.grid(row=3, column=0)
+        self.start_record_button = ctk.CTkButton(self, text="Start recording", command=self.start_recording)
+        self.start_record_button.grid(row=3, column=0)
+
+        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", command=self.stop_recording,
+                                                state="disabled")
+        self.stop_record_button.grid(row=3, column=1)
+
+        menu_button = ctk.CTkButton(self, text="Back to menu", command=self.back_to_menu)
+        menu_button.grid(row=4, column=0)
+
+    def back_to_menu(self):
+        self.sample_num = "0/5"
+        self.counter.configure(text=self.sample_num)
+        self.controller.show_frame("MenuFrame")
+
+    def start_recording(self):
+        self.running = True
+        thread = threading.Thread(target=self.capture, daemon=True)
+        thread.start()
+
+        path = self.controller.data + "/" + self.var.get()
+        self.existing_num = len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))])
+        self.sample_num = str(self.existing_num) + "/5"
+
+        self.update_frame()
+
+        self.start_record_button.configure(state="disabled")
+        self.stop_record_button.configure(state="normal")
+
+    def stop_recording(self):
+        self.running = False
+
+        self.start_record_button.configure(state="normal")
+        self.stop_record_button.configure(state="disabled")
+        nums = self.sample_num.split("/")
+        new_value = str(int(nums[0]) + 1) + "/" + nums[1]
+        self.sample_num = new_value
+        self.counter.configure(text=self.sample_num)
+
+    def capture(self):
+        capture = cv2.VideoCapture(0)
+        path = self.controller.data + "/" + self.var.get()
+
+        file_name = path + "/" + str(self.existing_num) + ".avi"
+
+        fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
+        video_writer = cv2.VideoWriter(file_name, fourcc, 25, (320, 320))
+
+        while self.running:
+            rect, frame = capture.read()
+            if rect:
+                frame = cv2.resize(frame, (320, 320))
+                cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                self.last_frame = Image.fromarray(cv2image)
+                video_writer.write(frame)
+
+        capture.release()
+        video_writer.release()
+
+    def update_frame(self):
+        if self.last_frame is not None:
+            tk_img = ImageTk.PhotoImage(master=self.webcam_label, image=self.last_frame)
+            self.webcam_label.configure(image=tk_img)
+            self.webcam_label.tk_img = tk_img
+
+        if self.running:
+            self.after(30, self.update_frame)
 
 
 class IdentifyFrame(ctk.CTkFrame):
@@ -207,32 +292,76 @@ class IdentifyFrame(ctk.CTkFrame):
         self.controller = controller
         self.grid(row=0, column=0)
 
+        # used for capturing video
+        self.running = False
+        self.last_frame = None
+        self.queue = deque(maxlen=10)
+
+        self.grid(row=0, column=0)
+
         # webcam
-        # label = ctk.CTkLabel(self)
-        # label.grid(row=0, column=0)
-        # cap = cv2.VideoCapture(0)
+        self.webcam_label = ctk.CTkLabel(self)
+        self.webcam_label.grid(row=1, column=0)
 
-        # def show_frames():
-        #     # Get the latest self and convert into Image
-        #     cv2image = cv2.cvtColor(cap.read()[1], cv2.COLOR_BGR2RGB)
-        #     img = Image.fromarray(cv2image)
-        #     # convert to PhotoImage
-        #     imgtk = ImageTk.PhotoImage(image=img)
-        #     # label.imgtk = imgtk
-        #     label.configure(image=imgtk)
-        #     # repeat
-        #     label.after(40, show_frames)
+        # counter for how many samples there are
+        ctk.CTkLabel(self, text="Predicted sign:").grid(row=0, column=1)
+        self.predicted_sign = "None"
+        self.sign_name = ctk.CTkLabel(self, text=self.predicted_sign)
+        self.sign_name.grid(row=1, column=1)
 
-        # show_frames()
+        self.start_predict_button = ctk.CTkButton(self, text="Start recording", command=self.start_predict)
+        self.start_predict_button.grid(row=3, column=0)
 
-        counter = ctk.CTkLabel(self, text="PREDICTED CLASS: TODO")
-        counter.grid(row=0, column=1)
-
-        # start_predict_button = ctk.CTkButton(self, text="Start prediction", command=self.predict_sign).grid(row=1, column=0)
-        # end_predict_button = ctk.CTkButton(self, text="End prediction", command=self.predict_sign).grid(row=1, column=1)
+        self.stop_predict_button = ctk.CTkButton(self, text="Stop recording", command=self.stop_predict,
+                                                 state="disabled")
+        self.stop_predict_button.grid(row=3, column=1)
 
         menu_button = ctk.CTkButton(self, text="Back to menu", command=lambda: controller.show_frame("MenuFrame"))
         menu_button.grid(row=2, column=0)
+
+    def start_predict(self):
+        self.running = True
+        thread = threading.Thread(target=self.predict, daemon=True)
+        thread.start()
+        self.update_frame()
+
+        self.start_predict_button.configure(state="disabled")
+        self.stop_predict_button.configure(state="normal")
+
+    def stop_predict(self):
+        self.running = False
+
+        self.start_predict_button.configure(state="normal")
+        self.stop_predict_button.configure(state="disabled")
+
+    def predict(self):
+        capture = cv2.VideoCapture(0)
+
+        while self.running:
+            print(time.time())
+            rect, frame = capture.read()
+            if rect:
+                frame = cv2.resize(frame, (320, 320))
+                cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                self.last_frame = Image.fromarray(cv2image)
+                image = np.asarray(cv2image)
+                # call predict on image
+                # predicted_image =
+                # self.queue.append(predicted_image)
+                # results = np.array(self.queue).mean(axis=0)
+                # i = np.argmax(results)
+                # self.predicted_sign = class_names[i]
+
+        capture.release()
+
+    def update_frame(self):
+        if self.last_frame is not None:
+            tk_img = ImageTk.PhotoImage(master=self.webcam_label, image=self.last_frame)
+            self.webcam_label.configure(image=tk_img)
+            self.webcam_label.tk_img = tk_img
+
+        if self.running:
+            self.after(30, self.update_frame)
 
 
 app = App()
