@@ -8,6 +8,8 @@ import customtkinter as ctk
 from PIL import Image, ImageTk
 import cv2
 import tkinter as tk
+from transfer_learn import Transfer
+import shutil
 # from tkinter import ttk
 
 ctk.set_appearance_mode("Dark")
@@ -31,7 +33,7 @@ class App(ctk.CTk):
 
         # create data folder if first start
         self.cwd = os.getcwd()
-        self.data = "../data"
+        self.data = "./data"
         if not os.path.exists(self.data):
             os.mkdir(self.data)
 
@@ -43,23 +45,9 @@ class App(ctk.CTk):
             new_frame.grid(row=0, column=0, sticky="nsew")
         self.show_frame("MenuFrame")
 
-
     def show_frame(self, frame_name):
         frame = self.frames[frame_name]
         frame.tkraise()
-
-    def record_sign(self):
-        # open camera, record sign, save it
-        #    # create new folder for each sign
-        # (optional) get the important part of the video
-        # fine-tune model with new videos
-        pass
-
-    def identify_sign(self):
-        # open camera
-        # call predict on model for each frame
-        # use rolling average to display the predicted sign
-        pass
 
 
 class MenuFrame(ctk.CTkFrame):
@@ -71,6 +59,7 @@ class MenuFrame(ctk.CTkFrame):
         self.rowconfigure(1, weight=1)
         self.rowconfigure(2, weight=1)
         self.rowconfigure(3, weight=1)
+        self.rowconfigure(4, weight=1)
 
         self.grid(row=0, column=0)
         # add buttons
@@ -86,13 +75,21 @@ class MenuFrame(ctk.CTkFrame):
                                              command=lambda: controller.show_frame("IdentifyFrame"))
         identify_sign_button.grid(row=2, column=0, sticky="nsew")
 
+        train_button = ctk.CTkButton(self, text="Train network", command=self.train)
+        train_button.grid(row=3, column=0, sticky="nsew")
+
         new_user_button = ctk.CTkButton(master=self, text="New user", command=self.new_user)
-        new_user_button.grid(row=3, column=0)  # , sticky="nsew")
+        new_user_button.grid(row=4, column=0)  # , sticky="nsew")
 
     def new_user(self):
         # delete previous videos
         shutil.rmtree(self.controller.data)
         os.mkdir(self.controller.data)
+
+    def train(self):
+        model = Transfer("chpoint5", os.path.join(self.controller.data, "images"))
+        model.train()
+        # pass
 
 
 class RecordFrame(ctk.CTkFrame):
@@ -131,6 +128,9 @@ class RecordFrame(ctk.CTkFrame):
         menu_button = ctk.CTkButton(self, text="Back to menu", command=self.back_to_menu)
         menu_button.grid(row=2, column=0)
 
+        if not os.path.exists(os.path.join(controller.data, "new_videos")):
+            os.mkdir(os.path.join(controller.data, "new_videos"))
+
     def back_to_menu(self):
         self.sign_name.configure(state="normal")
         self.sample_num = "0/5"
@@ -148,6 +148,8 @@ class RecordFrame(ctk.CTkFrame):
         self.stop_record_button.configure(state="normal")
 
     def stop_recording(self):
+        """"
+        """
         self.running = False
 
         self.start_record_button.configure(state="normal")
@@ -156,18 +158,20 @@ class RecordFrame(ctk.CTkFrame):
         new_value = str(int(nums[0]) + 1) + "/" + nums[1]
         self.sample_num = new_value
         self.counter.configure(text=self.sample_num)
+        time.sleep(0.5)
+        self.convert_to_images()
 
     def capture(self):
         capture = cv2.VideoCapture(0)
         sign_name = self.sign_name.get("0.0", "end")[:-1]  # last character is \n
-        path = self.controller.data + "/" + sign_name
+        path = self.controller.data + "/new_videos/" + sign_name
         if not os.path.exists(path):
             os.mkdir(path)
 
-        file_name = path + "/" + str(self.sample_num.split("/")[0]) + ".avi"
+        video_file_name = path + "/" + str(self.sample_num.split("/")[0]) + ".avi"
 
         fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
-        video_writer = cv2.VideoWriter(file_name, fourcc, 25, (320, 320))
+        video_writer = cv2.VideoWriter(video_file_name, fourcc, 25, (320, 320))
 
         while self.running:
             rect, frame = capture.read()
@@ -188,6 +192,51 @@ class RecordFrame(ctk.CTkFrame):
 
         if self.running:
             self.after(30, self.update_frame)
+
+    def convert_to_images(self):
+        new_videos_dir = self.controller.data + "/new_videos"
+        image_dir = self.controller.data + "/images"
+        videos_dir = self.controller.data + "/processed_videos"
+
+        # make folders for processed images and videos
+        if not os.path.exists(image_dir):
+            os.mkdir(image_dir)
+        if not os.path.exists(videos_dir):
+            os.mkdir(videos_dir)
+
+        for sign in os.listdir(new_videos_dir):
+            new_video_sign_path = os.path.join(new_videos_dir, sign)
+            image_sign_path = os.path.join(image_dir, sign)
+            video_sign_path = os.path.join(videos_dir, sign)
+
+            # make folders for processed images and videos signs
+            if not os.path.exists(image_sign_path):
+                os.mkdir(image_sign_path)
+            if not os.path.exists(video_sign_path):
+                os.mkdir(video_sign_path)
+
+            for filename in os.listdir(new_video_sign_path):
+                i = 0
+                new_video_file_path = os.path.join(new_video_sign_path, filename)
+                video_file_path = os.path.join(video_sign_path, filename)
+                cap = cv2.VideoCapture(new_video_file_path)
+                # image_file_path = os.path.join(image_sign_path, filename)
+
+                # Read each frame from the video
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if ret:
+                        split_name = filename.split(".")
+                        fname = split_name[0] + "_" + str(i) + ".png"
+                        file_name = os.path.join(image_sign_path, fname)
+                        cv2.imwrite(file_name, frame)
+                        i += 1
+                    else:
+                        break
+                cap.release()
+
+                # move video to processed folder
+                shutil.move(new_video_file_path, video_file_path)
 
 
 class AddFrame(ctk.CTkFrame):
