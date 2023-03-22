@@ -16,6 +16,9 @@ ctk.set_appearance_mode("Dark")
 
 
 class App(ctk.CTk):
+    """
+    Main window
+    """
     def __init__(self):
         super().__init__()
         # set geometry
@@ -51,6 +54,9 @@ class App(ctk.CTk):
 
 
 class MenuFrame(ctk.CTkFrame):
+    """
+    Menu page
+    """
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
         self.controller = controller
@@ -82,17 +88,25 @@ class MenuFrame(ctk.CTkFrame):
         new_user_button.grid(row=4, column=0)  # , sticky="nsew")
 
     def new_user(self):
-        # delete previous videos
+        """
+        Resets the data directory for a new user
+        """
         shutil.rmtree(self.controller.data)
         os.mkdir(self.controller.data)
 
     def train(self):
+        """
+        Train a CNN model
+        """
         model = Transfer("chpoint5", os.path.join(self.controller.data, "images"))
         model.train()
         # pass
 
 
 class RecordFrame(ctk.CTkFrame):
+    """
+    Page for recording new signs
+    """
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
         self.controller = controller
@@ -132,12 +146,18 @@ class RecordFrame(ctk.CTkFrame):
             os.mkdir(os.path.join(controller.data, "new_videos"))
 
     def back_to_menu(self):
+        """
+        Go back to main page
+        """
         self.sign_name.configure(state="normal")
         self.sample_num = "0/5"
         self.counter.configure(text=self.sample_num)
         self.controller.show_frame("MenuFrame")
 
     def start_recording(self):
+        """
+        Starts the recording process on a new thread
+        """
         self.running = True
         thread = threading.Thread(target=self.capture, daemon=True)
         thread.start()
@@ -149,6 +169,7 @@ class RecordFrame(ctk.CTkFrame):
 
     def stop_recording(self):
         """"
+        Stops the recording and updates the number of samples on screen
         """
         self.running = False
 
@@ -162,6 +183,9 @@ class RecordFrame(ctk.CTkFrame):
         self.convert_to_images()
 
     def capture(self):
+        """
+        Captures and saves video
+        """
         capture = cv2.VideoCapture(0)
         sign_name = self.sign_name.get("0.0", "end")[:-1]  # last character is \n
         path = self.controller.data + "/new_videos/" + sign_name
@@ -171,7 +195,7 @@ class RecordFrame(ctk.CTkFrame):
         video_file_name = path + "/" + str(self.sample_num.split("/")[0]) + ".avi"
 
         fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
-        video_writer = cv2.VideoWriter(video_file_name, fourcc, 25, (320, 320))
+        video_writer = cv2.VideoWriter(video_file_name, fourcc, 15, (320, 320))
 
         while self.running:
             rect, frame = capture.read()
@@ -185,6 +209,9 @@ class RecordFrame(ctk.CTkFrame):
         video_writer.release()
 
     def update_frame(self):
+        """
+        Shows webcam
+        """
         if self.last_frame is not None:
             tk_img = ImageTk.PhotoImage(master=self.webcam_label, image=self.last_frame)
             self.webcam_label.configure(image=tk_img)
@@ -194,6 +221,9 @@ class RecordFrame(ctk.CTkFrame):
             self.after(30, self.update_frame)
 
     def convert_to_images(self):
+        """
+        Convert video to images
+        """
         new_videos_dir = self.controller.data + "/new_videos"
         image_dir = self.controller.data + "/images"
         videos_dir = self.controller.data + "/processed_videos"
@@ -240,6 +270,9 @@ class RecordFrame(ctk.CTkFrame):
 
 
 class AddFrame(ctk.CTkFrame):
+    """
+    Page for adding new videos to existing signs
+    """
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
         self.controller = controller
@@ -277,11 +310,17 @@ class AddFrame(ctk.CTkFrame):
         menu_button.grid(row=4, column=0)
 
     def back_to_menu(self):
+        """
+        Go back to main page
+        """
         self.sample_num = "0/5"
         self.counter.configure(text=self.sample_num)
         self.controller.show_frame("MenuFrame")
 
     def start_recording(self):
+        """
+        Starts the recording process on a new thread
+        """
         self.running = True
         thread = threading.Thread(target=self.capture, daemon=True)
         thread.start()
@@ -296,6 +335,9 @@ class AddFrame(ctk.CTkFrame):
         self.stop_record_button.configure(state="normal")
 
     def stop_recording(self):
+        """"
+        Stops the recording and updates the number of samples on screen
+        """
         self.running = False
 
         self.start_record_button.configure(state="normal")
@@ -306,13 +348,16 @@ class AddFrame(ctk.CTkFrame):
         self.counter.configure(text=self.sample_num)
 
     def capture(self):
+        """
+        Captures and saves video
+        """
         capture = cv2.VideoCapture(0)
         path = self.controller.data + "/" + self.var.get()
 
         file_name = path + "/" + str(self.existing_num) + ".avi"
 
         fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
-        video_writer = cv2.VideoWriter(file_name, fourcc, 25, (320, 320))
+        video_writer = cv2.VideoWriter(file_name, fourcc, 15, (320, 320))
 
         while self.running:
             rect, frame = capture.read()
@@ -326,6 +371,9 @@ class AddFrame(ctk.CTkFrame):
         video_writer.release()
 
     def update_frame(self):
+        """
+        Shows webcam
+        """
         if self.last_frame is not None:
             tk_img = ImageTk.PhotoImage(master=self.webcam_label, image=self.last_frame)
             self.webcam_label.configure(image=tk_img)
@@ -336,6 +384,9 @@ class AddFrame(ctk.CTkFrame):
 
 
 class IdentifyFrame(ctk.CTkFrame):
+    """
+    Detects the sign on the webcam
+    """
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
         self.controller = controller
@@ -369,6 +420,9 @@ class IdentifyFrame(ctk.CTkFrame):
         menu_button.grid(row=2, column=0)
 
     def start_predict(self):
+        """
+        Starts the process of detecting the sign
+        """
         self.running = True
         thread = threading.Thread(target=self.predict, daemon=True)
         thread.start()
@@ -378,12 +432,18 @@ class IdentifyFrame(ctk.CTkFrame):
         self.stop_predict_button.configure(state="normal")
 
     def stop_predict(self):
+        """
+        Ends the process of detecting the sign
+        """
         self.running = False
 
         self.start_predict_button.configure(state="normal")
         self.stop_predict_button.configure(state="disabled")
 
     def predict(self):
+        """
+        Predicts the sign on the webcam
+        """
         capture = cv2.VideoCapture(0)
 
         while self.running:
@@ -404,6 +464,9 @@ class IdentifyFrame(ctk.CTkFrame):
         capture.release()
 
     def update_frame(self):
+        """
+        Shows webcam
+        """
         if self.last_frame is not None:
             tk_img = ImageTk.PhotoImage(master=self.webcam_label, image=self.last_frame)
             self.webcam_label.configure(image=tk_img)

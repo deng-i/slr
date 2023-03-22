@@ -9,7 +9,7 @@ from tensorflow.keras.layers import (
     Add,
 )
 from tensorflow.keras.models import Model
-from Segmentation.utils.BilinearUpSampling import *
+from train.Segmentation.utils.BilinearUpSampling import *
 
 
 class SegModel:
