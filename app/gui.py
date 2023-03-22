@@ -10,6 +10,7 @@ import cv2
 import tkinter as tk
 from transfer_learn import Transfer
 import shutil
+import tensorflow as tf
 # from tkinter import ttk
 
 ctk.set_appearance_mode("Dark")
@@ -192,7 +193,7 @@ class RecordFrame(ctk.CTkFrame):
         if not os.path.exists(path):
             os.mkdir(path)
 
-        video_file_name = path + "/" + str(self.sample_num.split("/")[0]) + ".avi"
+        video_file_name = path + "/" + sign_name + "__" + str(self.sample_num.split("/")[0]) + ".avi"
 
         fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
         video_writer = cv2.VideoWriter(video_file_name, fourcc, 15, (320, 320))
@@ -403,7 +404,7 @@ class IdentifyFrame(ctk.CTkFrame):
         self.webcam_label = ctk.CTkLabel(self)
         self.webcam_label.grid(row=1, column=0)
 
-        # counter for how many samples there are
+        # predicted sign placeholder
         ctk.CTkLabel(self, text="Predicted sign:").grid(row=0, column=1)
         self.predicted_sign = "None"
         self.sign_name = ctk.CTkLabel(self, text=self.predicted_sign)
@@ -423,6 +424,8 @@ class IdentifyFrame(ctk.CTkFrame):
         """
         Starts the process of detecting the sign
         """
+        self.model = tf.keras.models.load_model("models/trained_model", compile=False)
+        self.model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
         self.running = True
         thread = threading.Thread(target=self.predict, daemon=True)
         thread.start()
@@ -445,7 +448,8 @@ class IdentifyFrame(ctk.CTkFrame):
         Predicts the sign on the webcam
         """
         capture = cv2.VideoCapture(0)
-
+        class_names = os.listdir(os.path.join(self.controller.data, "images"))
+        print(class_names)
         while self.running:
             print(time.time())
             rect, frame = capture.read()
@@ -453,13 +457,18 @@ class IdentifyFrame(ctk.CTkFrame):
                 frame = cv2.resize(frame, (320, 320))
                 cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 self.last_frame = Image.fromarray(cv2image)
-                image = np.asarray(cv2image)
                 # call predict on image
-                # predicted_image =
-                # self.queue.append(predicted_image)
-                # results = np.array(self.queue).mean(axis=0)
-                # i = np.argmax(results)
-                # self.predicted_sign = class_names[i]
+                image = np.array(cv2image)
+                # normalise
+                image = image * 1. / 255
+                predicted_image = self.model(np.expand_dims(image, axis=0))[0]
+                print(predicted_image)
+                self.queue.append(predicted_image)
+                results = np.array(self.queue).mean(axis=0)
+                print(results)
+                i = np.argmax(results)
+                self.predicted_sign = class_names[i]
+                self.sign_name.configure(text=self.predicted_sign)
 
         capture.release()
 
@@ -473,7 +482,7 @@ class IdentifyFrame(ctk.CTkFrame):
             self.webcam_label.tk_img = tk_img
 
         if self.running:
-            self.after(30, self.update_frame)
+            self.after(40, self.update_frame)
 
 
 app = App()
