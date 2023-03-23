@@ -44,6 +44,8 @@ class App(ctk.CTk):
         self.frames = {}
         for frame in (MenuFrame, RecordFrame, AddFrame, IdentifyFrame):
             frame_name = frame.__name__
+            if frame_name == "AddFrame" and not os.path.exists(os.path.join(self.data, "images")):
+                continue
             new_frame = frame(parent=self.container, controller=self)
             self.frames[frame_name] = new_frame
             new_frame.grid(row=0, column=0, sticky="nsew")
@@ -66,7 +68,6 @@ class MenuFrame(ctk.CTkFrame):
         self.controller = controller
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
         self.rowconfigure(2, weight=1)
         self.rowconfigure(3, weight=1)
         self.rowconfigure(4, weight=1)
@@ -77,9 +78,11 @@ class MenuFrame(ctk.CTkFrame):
                                         command=lambda: controller.show_frame("RecordFrame"))
         new_sign_button.grid(row=0, column=0, sticky="nsew")
 
-        add_to_sign_button = ctk.CTkButton(self, text="Add more examples to an existing sign", fg_color="black",
-                                           font=("Arial", 40), command=lambda: controller.show_frame("AddFrame"))
-        add_to_sign_button.grid(row=1, column=0, sticky="nsew")
+        if os.path.exists(os.path.join(controller.data, "images")):
+            self.rowconfigure(1, weight=1)
+            add_to_sign_button = ctk.CTkButton(self, text="Add more examples to an existing sign", fg_color="black",
+                                               font=("Arial", 40), command=lambda: controller.show_frame("AddFrame"))
+            add_to_sign_button.grid(row=1, column=0, sticky="nsew")
 
         identify_sign_button = ctk.CTkButton(master=self, text="Identify sign", fg_color="black", font=("Arial", 40),
                                              command=lambda: controller.show_frame("IdentifyFrame"))
@@ -214,12 +217,16 @@ class RecordFrame(ctk.CTkFrame):
 
         video_file_name = path + "/" + sign_name + "__" + str(self.sample_num.split("/")[0]) + ".avi"
 
+        frame_rate = 10
+        prev = 0
         fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
-        video_writer = cv2.VideoWriter(video_file_name, fourcc, 15, (320, 320))
+        video_writer = cv2.VideoWriter(video_file_name, fourcc, frame_rate, (320, 320))
 
         while self.running:
+            time_elapsed = time.time() - prev
             rect, frame = capture.read()
-            if rect:
+            if rect and time_elapsed >= 1. / frame_rate:
+                prev = time.time()
                 frame = cv2.resize(frame, (320, 320))
                 cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 self.last_frame = Image.fromarray(cv2image)
@@ -397,12 +404,16 @@ class AddFrame(ctk.CTkFrame):
 
         file_name = path + "/" + self.var.get() + "__" + str(self.sample_num.split("/")[0]) + ".avi"
 
+        frame_rate = 10
+        prev = 0
         fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
-        video_writer = cv2.VideoWriter(file_name, fourcc, 15, (320, 320))
+        video_writer = cv2.VideoWriter(file_name, fourcc, 30, (320, 320))
 
         while self.running:
+            time_elapsed = time.time() - prev
             rect, frame = capture.read()
-            if rect:
+            if rect and time_elapsed >= 1. / frame_rate:
+                prev = time.time()
                 frame = cv2.resize(frame, (320, 320))
                 cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 self.last_frame = Image.fromarray(cv2image)
@@ -495,11 +506,11 @@ class IdentifyFrame(ctk.CTkFrame):
         self.sign_name = ctk.CTkLabel(self, text=self.predicted_sign, fg_color="black", font=("Arial", 40))
         self.sign_name.grid(row=2, column=1, sticky="nsew")
 
-        self.start_predict_button = ctk.CTkButton(self, text="Start recording", fg_color="black", font=("Arial", 40),
+        self.start_predict_button = ctk.CTkButton(self, text="Start recognising", fg_color="black", font=("Arial", 40),
                                                   command=self.start_predict)
         self.start_predict_button.grid(row=1, column=0, sticky="nsew")
 
-        self.stop_predict_button = ctk.CTkButton(self, text="Stop recording", fg_color="black", font=("Arial", 40),
+        self.stop_predict_button = ctk.CTkButton(self, text="Stop recognising", fg_color="black", font=("Arial", 40),
                                                  command=self.stop_predict, state="disabled")
         self.stop_predict_button.grid(row=2, column=0, sticky="nsew")
 
@@ -511,7 +522,7 @@ class IdentifyFrame(ctk.CTkFrame):
         """
         Starts the process of detecting the sign
         """
-        self.model = tf.keras.models.load_model("models/trained_model", compile=False)
+        self.model = tf.keras.models.load_model("models/trained_model_end", compile=False)
         self.model.compile(loss="categorical_crossentropy", optimizer="adam", metrics="accuracy")
         self.running = True
         thread = threading.Thread(target=self.predict, daemon=True)
