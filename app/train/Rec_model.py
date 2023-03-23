@@ -20,6 +20,7 @@ class RecModel(object):
         self._build_model()
 
     def _build_model(self):
+        # get segmentation model, freeze weights
         SegM = SegModel(self.input_size)
         Smodel = SegM.model
         Smodel.load_weights('train/Seg_weight.hdf5')

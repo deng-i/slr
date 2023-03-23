@@ -40,7 +40,7 @@ class SegModel:
 
             ident_map = Conv2D(nfilter, (1, 1), strides=(s, s))(ident_map)
 
-            out = Add()([ident_map, x])  # !!!!!!!!!!!!!!!
+            out = Add()([ident_map, x])
 
             return out
 
@@ -70,7 +70,7 @@ class SegModel:
         a4 = Conv2D(dconv_filters, 3, activation='relu', padding='same', dilation_rate=12)(conv1)
         a5 = Conv2D(dconv_filters, 3, activation='relu', padding='same', dilation_rate=18)(conv1)
 
-        concat = concatenate([a1, a2, a3, a4, a5], axis=3)  # !!!!!!!!!!!
+        concat = concatenate([a1, a2, a3, a4, a5], axis=3)
 
         return concat
 

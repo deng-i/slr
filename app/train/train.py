@@ -43,29 +43,20 @@ def train(opt):
     #     class_mode="categorical"
     # )
 
-    # check the name of each class with corresponding indices using:
-    # print(train_generator.class_indices)
-    # a, b = next(train_generator)
-    # print(a.shape)
-
-    #####Compile####
+    # Compile
     RecM = RecModel(input_size, opt.num_class)
     model = RecM.model_F
     _adam = optimizers.Adam(learning_rate=opt.lr)
     model.compile(loss='categorical_crossentropy', optimizer=_adam, metrics=['accuracy'])
 
-    # model = tf.keras.models.load_model(opt.model_path, compile=False)
-    # model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
-    # model.evaluate(test_generator)
-
-    # model_checkpoint = ModelCheckpoint(opt.chekp, monitor='val_accuracy', verbose=1, save_best_only=False,
-    #                                    save_weights_only=False)
+    model_checkpoint = ModelCheckpoint(opt.chekp, monitor='val_accuracy', verbose=1, save_best_only=True,
+                                       save_weights_only=False)
 
     model.fit(
         train_generator,
         epochs=opt.epochs,
-        validation_data=validation_generator)
-        # callbacks=[model_checkpoint])
+        validation_data=validation_generator,
+        callbacks=[model_checkpoint])
 
 
 if __name__ == '__main__':

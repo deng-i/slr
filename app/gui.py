@@ -107,7 +107,7 @@ class MenuFrame(ctk.CTkFrame):
         """
         Train a CNN model
         """
-        model = Transfer("chpoint5", os.path.join(self.controller.data, "images"))
+        model = Transfer(os.path.join(self.controller.data, "images"))
         model.train()
         # pass
 

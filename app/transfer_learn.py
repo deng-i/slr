@@ -1,19 +1,19 @@
+import os
+import shutil
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from train.Rec_model import RecModel
-import os
-from sklearn.model_selection import train_test_split
-import shutil
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from sklearn.model_selection import train_test_split
+from train.Rec_model import RecModel
 
 
 class Transfer:
-    def __init__(self, model_path: str, training_data_path: str):
+    def __init__(self, training_data_path: str):
         self.training_data_path = training_data_path
         self.split_data()
         self.load_data()
 
-        # get model
+        # get model and build new
         RecM = RecModel((320, 320, 3), len(self.training_data.class_indices))
         model = RecM.model_F
 
@@ -30,7 +30,7 @@ class Transfer:
 
         # save models if good
         model_checkpoint = ModelCheckpoint("models/trained_model", monitor='val_accuracy', verbose=1, save_best_only=True)
-        early_stop = EarlyStopping(monitor="val_accuracy", patience=5)
+        early_stop = EarlyStopping(monitor="val_accuracy", patience=4)
 
         self.transfer_model.fit(
             self.training_data,
@@ -44,6 +44,7 @@ class Transfer:
         """
         Load training and validation data
         """
+        # augment data
         train_datagen = ImageDataGenerator(
             rotation_range=40,
             rescale=1. / 255,
@@ -57,6 +58,7 @@ class Transfer:
 
         test_datagen = ImageDataGenerator(rescale=1. / 255)
 
+        # load data
         self.training_data = train_datagen.flow_from_directory(
             os.path.join(self.training_data_path, "train"),  # this is the target directory
             target_size=(320, 320),  # all images will be resized to 320*320
@@ -76,6 +78,7 @@ class Transfer:
         data_dir = self.training_data_path
         train_data_dir = os.path.join(os.path.dirname(data_dir), "train")
         self.training_data_path = train_data_dir
+
         # reset the data
         if os.path.exists(os.path.join(train_data_dir)):
             shutil.rmtree(train_data_dir)
@@ -95,8 +98,11 @@ class Transfer:
         for sign in sign_names:
             train_path = os.path.join(train_dir, sign)
             val_path = os.path.join(val_dir, sign)
+
+            # make relevant folders
             os.mkdir(train_path)
             os.mkdir(val_path)
+
             signs_path = os.path.join(data_dir, sign)
             signs = os.listdir(signs_path)
             train_filenames, val_filenames = train_test_split(signs, test_size=val_split)
@@ -112,5 +118,3 @@ class Transfer:
                 src = os.path.join(signs_path, filename)
                 dst = os.path.join(val_path, filename)
                 shutil.copy(src, dst)
-
-
