@@ -1,14 +1,15 @@
 import os
 import threading
-import numpy as np
+import shutil
 import time
 from collections import deque
+
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import cv2
 import tkinter as tk
+import numpy as np
 from transfer_learn import Transfer
-import shutil
 import tensorflow as tf
 
 ctk.set_appearance_mode("Dark")
@@ -24,6 +25,7 @@ class App(ctk.CTk):
         self.geometry(f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}-7-3")
         self.title("Sign recogniser")
 
+        # container for all the frames
         self.container = ctk.CTkFrame(self)
         self.container.pack(fill=tk.BOTH, expand=True)
 
@@ -71,23 +73,25 @@ class MenuFrame(ctk.CTkFrame):
 
         self.grid(row=0, column=0)
         # add buttons
-        new_sign_button = ctk.CTkButton(master=self, text="Record new sign", fg_color="black",
+        new_sign_button = ctk.CTkButton(master=self, text="Record new sign", fg_color="black", font=("Arial", 40),
                                         command=lambda: controller.show_frame("RecordFrame"))
         new_sign_button.grid(row=0, column=0, sticky="nsew")
 
         add_to_sign_button = ctk.CTkButton(self, text="Add more examples to an existing sign", fg_color="black",
-                                           command=lambda: controller.show_frame("AddFrame"))
+                                           font=("Arial", 40), command=lambda: controller.show_frame("AddFrame"))
         add_to_sign_button.grid(row=1, column=0, sticky="nsew")
 
-        identify_sign_button = ctk.CTkButton(master=self, text="Identify sign", fg_color="black",
+        identify_sign_button = ctk.CTkButton(master=self, text="Identify sign", fg_color="black", font=("Arial", 40),
                                              command=lambda: controller.show_frame("IdentifyFrame"))
         identify_sign_button.grid(row=2, column=0, sticky="nsew")
 
-        train_button = ctk.CTkButton(self, text="Train network", fg_color="black", command=self.train)
+        train_button = ctk.CTkButton(self, text="Train network", fg_color="black", font=("Arial", 40),
+                                     command=self.train)
         train_button.grid(row=3, column=0, sticky="nsew")
 
-        new_user_button = ctk.CTkButton(master=self, text="New user", fg_color="black", command=self.new_user)
-        new_user_button.grid(row=4, column=0)  # , sticky="nsew")
+        new_user_button = ctk.CTkButton(master=self, text="New user", fg_color="black", font=("Arial", 40),
+                                        command=self.new_user)
+        new_user_button.grid(row=4, column=0, sticky="nsew")
 
     def new_user(self):
         """
@@ -112,6 +116,14 @@ class RecordFrame(ctk.CTkFrame):
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
         self.controller = controller
+        self.parent = parent
+
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
+        self.rowconfigure(3, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
 
         # used for capturing video
         self.running = False
@@ -120,31 +132,32 @@ class RecordFrame(ctk.CTkFrame):
         self.grid(row=0, column=0)
 
         # textbox for sign name
-        self.sign_name = ctk.CTkTextbox(self)
-        self.sign_name.grid(row=0, column=0)
+        self.sign_name = ctk.CTkTextbox(self, fg_color="black", font=("Arial", 40))
+        self.sign_name.grid(row=1, column=0, sticky="nsew")
         self.sign_name.insert("0.0", "Please enter a name here for the sign")
 
         # webcam
-        self.webcam_label = ctk.CTkLabel(self)
-        self.webcam_label.grid(row=1, column=0)
+        self.webcam_label = ctk.CTkLabel(self, text="", fg_color="black")
+        self.webcam_label.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
         # counter for how many samples there are
-        ctk.CTkLabel(self, text="Number of samples:").grid(row=0, column=1)
+        ctk.CTkLabel(self, text="Number of samples:", fg_color="black", font=("Arial", 40))\
+            .grid(row=1, column=1, sticky="nsew")
         self.sample_num = "0/5"
-        self.counter = ctk.CTkLabel(self, text=self.sample_num)
-        self.counter.grid(row=1, column=1)
+        self.counter = ctk.CTkLabel(self, text=self.sample_num, fg_color="black", font=("Arial", 40))
+        self.counter.grid(row=2, column=1, sticky="nsew")
 
-        self.start_record_button = ctk.CTkButton(self, text="Start recording", fg_color="black",
+        self.start_record_button = ctk.CTkButton(self, text="Start recording", fg_color="black", font=("Arial", 40),
                                                  command=self.start_recording)
-        self.start_record_button.grid(row=3, column=0)
+        self.start_record_button.grid(row=3, column=0, sticky="nsew")
 
-        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", fg_color="black",
-                                                command=self.stop_recording,
-                                                state="disabled")
-        self.stop_record_button.grid(row=3, column=1)
+        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", fg_color="black", font=("Arial", 40),
+                                                command=self.stop_recording, state="disabled")
+        self.stop_record_button.grid(row=3, column=1, sticky="nsew")
 
-        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black", command=self.back_to_menu)
-        menu_button.grid(row=2, column=0)
+        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black", font=("Arial", 40),
+                                    command=self.back_to_menu)
+        menu_button.grid(row=2, column=0, sticky="nsew")
 
         if not os.path.exists(os.path.join(controller.data, "new_videos")):
             os.mkdir(os.path.join(controller.data, "new_videos"))
@@ -284,6 +297,9 @@ class AddFrame(ctk.CTkFrame):
         ctk.CTkFrame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
+
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
         self.grid(row=0, column=0)
 
         # used for capturing video
@@ -293,30 +309,41 @@ class AddFrame(ctk.CTkFrame):
 
         self.var = tk.StringVar()
         i = 0
+        # add options
         for file in os.listdir(controller.data + "/images"):
-            ctk.CTkRadioButton(self, text=file, variable=self.var, value=file).grid(row=i, column=0)
+            ctk.CTkRadioButton(self, text=file, variable=self.var, value=file, fg_color="black", font=("Arial", 40))\
+                .grid(row=i // 2, column=i % 2, sticky="nsew")
+            self.rowconfigure(i // 2, weight=1)
             i += 1
+        i = int(np.ceil(i / 2))
+        # configure layout
+        self.rowconfigure(i, weight=1)
+        self.rowconfigure(i+1, weight=1)
+        self.rowconfigure(i+2, weight=1)
+        self.rowconfigure(i+3, weight=1)
 
         # webcam
-        self.webcam_label = ctk.CTkLabel(self)
-        self.webcam_label.grid(row=2, column=0)
+        self.webcam_label = ctk.CTkLabel(self, text="", fg_color="black")
+        self.webcam_label.grid(row=i, column=0, columnspan=2, sticky="nsew")
 
         # counter for how many samples there are
-        ctk.CTkLabel(self, text="Number of samples:").grid(row=0, column=1)
+        ctk.CTkLabel(self, text="Number of samples:", fg_color="black", font=("Arial", 40))\
+            .grid(row=i+1, column=1, sticky="nsew")
         self.sample_num = "0/5"
-        self.counter = ctk.CTkLabel(self, text=self.sample_num)
-        self.counter.grid(row=1, column=1)
+        self.counter = ctk.CTkLabel(self, text=self.sample_num, fg_color="black", font=("Arial", 40))
+        self.counter.grid(row=i+2, column=1, sticky="nsew")
 
-        self.start_record_button = ctk.CTkButton(self, text="Start recording", fg_color="black",
+        self.start_record_button = ctk.CTkButton(self, text="Start recording", fg_color="black", font=("Arial", 40),
                                                  command=self.start_recording)
-        self.start_record_button.grid(row=3, column=0)
+        self.start_record_button.grid(row=i+1, column=0, sticky="nsew")
 
-        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", fg_color="black",
+        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", fg_color="black", font=("Arial", 40),
                                                 command=self.stop_recording, state="disabled")
-        self.stop_record_button.grid(row=3, column=1)
+        self.stop_record_button.grid(row=i+2, column=0, sticky="nsew")
 
-        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black", command=self.back_to_menu)
-        menu_button.grid(row=4, column=0)
+        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black", font=("Arial", 40),
+                                    command=self.back_to_menu)
+        menu_button.grid(row=i+3, column=0, columnspan=2, sticky="nsew")
 
     def back_to_menu(self):
         """
@@ -435,12 +462,20 @@ class AddFrame(ctk.CTkFrame):
 
 class IdentifyFrame(ctk.CTkFrame):
     """
-    Detects the sign on the webcam
+    Frame for detecting the sign on the webcam
     """
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
         self.controller = controller
         self.grid(row=0, column=0)
+
+        # configure layout
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
+        self.rowconfigure(3, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
 
         # used for capturing video
         self.running = False
@@ -450,26 +485,27 @@ class IdentifyFrame(ctk.CTkFrame):
         self.grid(row=0, column=0)
 
         # webcam
-        self.webcam_label = ctk.CTkLabel(self)
-        self.webcam_label.grid(row=1, column=0)
+        self.webcam_label = ctk.CTkLabel(self, text="", fg_color="black")
+        self.webcam_label.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
         # predicted sign placeholder
-        ctk.CTkLabel(self, text="Predicted sign:").grid(row=0, column=1)
+        ctk.CTkLabel(self, text="Predicted sign:", fg_color="black", font=("Arial", 40))\
+            .grid(row=1, column=1, sticky="nsew")
         self.predicted_sign = "None"
-        self.sign_name = ctk.CTkLabel(self, text=self.predicted_sign)
-        self.sign_name.grid(row=1, column=1)
+        self.sign_name = ctk.CTkLabel(self, text=self.predicted_sign, fg_color="black", font=("Arial", 40))
+        self.sign_name.grid(row=2, column=1, sticky="nsew")
 
-        self.start_predict_button = ctk.CTkButton(self, text="Start recording", fg_color="black",
+        self.start_predict_button = ctk.CTkButton(self, text="Start recording", fg_color="black", font=("Arial", 40),
                                                   command=self.start_predict)
-        self.start_predict_button.grid(row=3, column=0)
+        self.start_predict_button.grid(row=1, column=0, sticky="nsew")
 
-        self.stop_predict_button = ctk.CTkButton(self, text="Stop recording", fg_color="black",
+        self.stop_predict_button = ctk.CTkButton(self, text="Stop recording", fg_color="black", font=("Arial", 40),
                                                  command=self.stop_predict, state="disabled")
-        self.stop_predict_button.grid(row=3, column=1)
+        self.stop_predict_button.grid(row=2, column=0, sticky="nsew")
 
-        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black",
+        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black", font=("Arial", 40),
                                     command=lambda: controller.show_frame("MenuFrame"))
-        menu_button.grid(row=2, column=0)
+        menu_button.grid(row=3, column=0, columnspan=2, sticky="nsew")
 
     def start_predict(self):
         """
