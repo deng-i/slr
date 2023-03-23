@@ -12,23 +12,26 @@ class Transfer:
         self.training_data_path = training_data_path
         self.split_data()
         self.load_data()
-        # model = tf.keras.models.load_model(model_path, compile=False)
-        # for layer in model.layers[:-1]:
-        #     layer.trainable = False
-        # print(model.summary())
+
+        # get model
         RecM = RecModel((320, 320, 3), len(self.training_data.class_indices))
         model = RecM.model_F
-        # model.compile(loss='categorical_crossentropy', optimizer="adam", metrics=['accuracy'])
+
         prediction = tf.keras.layers.Dense(len(self.training_data.class_indices),
                                            activation="softmax")(model.layers[-2].output)
         self.transfer_model = tf.keras.models.Model(inputs=model.input, outputs=prediction)
-        # print(self.transfer_model.summary())
 
     def train(self):
+        """
+        Train model with data captured earlier
+        """
         adam = tf.keras.optimizers.Adam()
         self.transfer_model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
+
+        # save models if good
         model_checkpoint = ModelCheckpoint("models/trained_model", monitor='val_accuracy', verbose=1, save_best_only=True)
         early_stop = EarlyStopping(monitor="val_accuracy", patience=5)
+
         self.transfer_model.fit(
             self.training_data,
             epochs=40,
@@ -38,6 +41,9 @@ class Transfer:
         self.transfer_model.save("models/trained_model_end")
 
     def load_data(self):
+        """
+        Load training and validation data
+        """
         train_datagen = ImageDataGenerator(
             rotation_range=40,
             rescale=1. / 255,

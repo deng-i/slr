@@ -1,5 +1,4 @@
 import os
-import shutil
 import threading
 import numpy as np
 import time
@@ -11,7 +10,6 @@ import tkinter as tk
 from transfer_learn import Transfer
 import shutil
 import tensorflow as tf
-# from tkinter import ttk
 
 ctk.set_appearance_mode("Dark")
 
@@ -50,6 +48,9 @@ class App(ctk.CTk):
         self.show_frame("MenuFrame")
 
     def show_frame(self, frame_name):
+        """
+        Switches visible frame
+        """
         frame = self.frames[frame_name]
         frame.tkraise()
 
@@ -70,22 +71,22 @@ class MenuFrame(ctk.CTkFrame):
 
         self.grid(row=0, column=0)
         # add buttons
-        new_sign_button = ctk.CTkButton(master=self, text="Record new sign",
+        new_sign_button = ctk.CTkButton(master=self, text="Record new sign", fg_color="black",
                                         command=lambda: controller.show_frame("RecordFrame"))
         new_sign_button.grid(row=0, column=0, sticky="nsew")
 
-        add_to_sign_button = ctk.CTkButton(self, text="Add more examples to an existing sign",
+        add_to_sign_button = ctk.CTkButton(self, text="Add more examples to an existing sign", fg_color="black",
                                            command=lambda: controller.show_frame("AddFrame"))
         add_to_sign_button.grid(row=1, column=0, sticky="nsew")
 
-        identify_sign_button = ctk.CTkButton(master=self, text="Identify sign",
+        identify_sign_button = ctk.CTkButton(master=self, text="Identify sign", fg_color="black",
                                              command=lambda: controller.show_frame("IdentifyFrame"))
         identify_sign_button.grid(row=2, column=0, sticky="nsew")
 
-        train_button = ctk.CTkButton(self, text="Train network", command=self.train)
+        train_button = ctk.CTkButton(self, text="Train network", fg_color="black", command=self.train)
         train_button.grid(row=3, column=0, sticky="nsew")
 
-        new_user_button = ctk.CTkButton(master=self, text="New user", command=self.new_user)
+        new_user_button = ctk.CTkButton(master=self, text="New user", fg_color="black", command=self.new_user)
         new_user_button.grid(row=4, column=0)  # , sticky="nsew")
 
     def new_user(self):
@@ -133,14 +134,16 @@ class RecordFrame(ctk.CTkFrame):
         self.counter = ctk.CTkLabel(self, text=self.sample_num)
         self.counter.grid(row=1, column=1)
 
-        self.start_record_button = ctk.CTkButton(self, text="Start recording", command=self.start_recording)
+        self.start_record_button = ctk.CTkButton(self, text="Start recording", fg_color="black",
+                                                 command=self.start_recording)
         self.start_record_button.grid(row=3, column=0)
 
-        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", command=self.stop_recording,
+        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", fg_color="black",
+                                                command=self.stop_recording,
                                                 state="disabled")
         self.stop_record_button.grid(row=3, column=1)
 
-        menu_button = ctk.CTkButton(self, text="Back to menu", command=self.back_to_menu)
+        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black", command=self.back_to_menu)
         menu_button.grid(row=2, column=0)
 
         if not os.path.exists(os.path.join(controller.data, "new_videos")):
@@ -150,9 +153,12 @@ class RecordFrame(ctk.CTkFrame):
         """
         Go back to main page
         """
-        self.sign_name.configure(state="normal")
-        self.sample_num = "0/5"
-        self.counter.configure(text=self.sample_num)
+        # self.sign_name.configure(state="normal")
+        # self.sample_num = "0/5"
+        # self.counter.configure(text=self.sample_num)
+        self.__init__(self.parent, self.controller)
+        self.controller.frames["RecordFrame"] = self
+        self.grid(row=0, column=0, sticky="nsew")
         self.controller.show_frame("MenuFrame")
 
     def start_recording(self):
@@ -276,6 +282,7 @@ class AddFrame(ctk.CTkFrame):
     """
     def __init__(self, parent, controller):
         ctk.CTkFrame.__init__(self, parent)
+        self.parent = parent
         self.controller = controller
         self.grid(row=0, column=0)
 
@@ -286,7 +293,7 @@ class AddFrame(ctk.CTkFrame):
 
         self.var = tk.StringVar()
         i = 0
-        for file in os.listdir(controller.data):
+        for file in os.listdir(controller.data + "/images"):
             ctk.CTkRadioButton(self, text=file, variable=self.var, value=file).grid(row=i, column=0)
             i += 1
 
@@ -300,22 +307,26 @@ class AddFrame(ctk.CTkFrame):
         self.counter = ctk.CTkLabel(self, text=self.sample_num)
         self.counter.grid(row=1, column=1)
 
-        self.start_record_button = ctk.CTkButton(self, text="Start recording", command=self.start_recording)
+        self.start_record_button = ctk.CTkButton(self, text="Start recording", fg_color="black",
+                                                 command=self.start_recording)
         self.start_record_button.grid(row=3, column=0)
 
-        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", command=self.stop_recording,
-                                                state="disabled")
+        self.stop_record_button = ctk.CTkButton(self, text="Stop recording", fg_color="black",
+                                                command=self.stop_recording, state="disabled")
         self.stop_record_button.grid(row=3, column=1)
 
-        menu_button = ctk.CTkButton(self, text="Back to menu", command=self.back_to_menu)
+        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black", command=self.back_to_menu)
         menu_button.grid(row=4, column=0)
 
     def back_to_menu(self):
         """
         Go back to main page
         """
-        self.sample_num = "0/5"
-        self.counter.configure(text=self.sample_num)
+        # self.sample_num = "0/5"
+        # self.counter.configure(text=self.sample_num)
+        self.__init__(self.parent, self.controller)
+        self.controller.frames["AddFrame"] = self
+        self.grid(row=0, column=0, sticky="nsew")
         self.controller.show_frame("MenuFrame")
 
     def start_recording(self):
@@ -326,7 +337,7 @@ class AddFrame(ctk.CTkFrame):
         thread = threading.Thread(target=self.capture, daemon=True)
         thread.start()
 
-        path = self.controller.data + "/" + self.var.get()
+        path = self.controller.data + "/processed_videos/" + self.var.get()
         self.existing_num = len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))])
         self.sample_num = str(self.existing_num) + "/5"
 
@@ -347,15 +358,17 @@ class AddFrame(ctk.CTkFrame):
         new_value = str(int(nums[0]) + 1) + "/" + nums[1]
         self.sample_num = new_value
         self.counter.configure(text=self.sample_num)
+        time.sleep(0.5)
+        self.convert_to_images()
 
     def capture(self):
         """
         Captures and saves video
         """
         capture = cv2.VideoCapture(0)
-        path = self.controller.data + "/" + self.var.get()
+        path = self.controller.data + "/new_videos/" + self.var.get()
 
-        file_name = path + "/" + str(self.existing_num) + ".avi"
+        file_name = path + "/" + self.var.get() + "__" + str(self.sample_num.split("/")[0]) + ".avi"
 
         fourcc = cv2.VideoWriter_fourcc("X", "V", "I", "D")
         video_writer = cv2.VideoWriter(file_name, fourcc, 15, (320, 320))
@@ -382,6 +395,42 @@ class AddFrame(ctk.CTkFrame):
 
         if self.running:
             self.after(30, self.update_frame)
+
+    def convert_to_images(self):
+        """
+        Convert video to images
+        """
+        new_videos_dir = self.controller.data + "/new_videos"
+        image_dir = self.controller.data + "/images"
+        videos_dir = self.controller.data + "/processed_videos"
+
+        for sign in os.listdir(new_videos_dir):
+            new_video_sign_path = os.path.join(new_videos_dir, sign)
+            image_sign_path = os.path.join(image_dir, sign)
+            video_sign_path = os.path.join(videos_dir, sign)
+
+            for filename in os.listdir(new_video_sign_path):
+                i = 0
+                new_video_file_path = os.path.join(new_video_sign_path, filename)
+                video_file_path = os.path.join(video_sign_path, filename)
+                cap = cv2.VideoCapture(new_video_file_path)
+                # image_file_path = os.path.join(image_sign_path, filename)
+
+                # Read each frame from the video
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if ret:
+                        split_name = filename.split(".")
+                        fname = split_name[0] + "_" + str(i) + ".png"
+                        file_name = os.path.join(image_sign_path, fname)
+                        cv2.imwrite(file_name, frame)
+                        i += 1
+                    else:
+                        break
+                cap.release()
+
+                # move video to processed folder
+                shutil.move(new_video_file_path, video_file_path)
 
 
 class IdentifyFrame(ctk.CTkFrame):
@@ -410,14 +459,16 @@ class IdentifyFrame(ctk.CTkFrame):
         self.sign_name = ctk.CTkLabel(self, text=self.predicted_sign)
         self.sign_name.grid(row=1, column=1)
 
-        self.start_predict_button = ctk.CTkButton(self, text="Start recording", command=self.start_predict)
+        self.start_predict_button = ctk.CTkButton(self, text="Start recording", fg_color="black",
+                                                  command=self.start_predict)
         self.start_predict_button.grid(row=3, column=0)
 
-        self.stop_predict_button = ctk.CTkButton(self, text="Stop recording", command=self.stop_predict,
-                                                 state="disabled")
+        self.stop_predict_button = ctk.CTkButton(self, text="Stop recording", fg_color="black",
+                                                 command=self.stop_predict, state="disabled")
         self.stop_predict_button.grid(row=3, column=1)
 
-        menu_button = ctk.CTkButton(self, text="Back to menu", command=lambda: controller.show_frame("MenuFrame"))
+        menu_button = ctk.CTkButton(self, text="Back to menu", fg_color="black",
+                                    command=lambda: controller.show_frame("MenuFrame"))
         menu_button.grid(row=2, column=0)
 
     def start_predict(self):
@@ -457,10 +508,12 @@ class IdentifyFrame(ctk.CTkFrame):
                 frame = cv2.resize(frame, (320, 320))
                 cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 self.last_frame = Image.fromarray(cv2image)
-                # call predict on image
                 image = np.array(cv2image)
+
                 # normalise
                 image = image * 1. / 255
+
+                # store predictions in a queue, so rolling average can be used
                 predicted_image = self.model(np.expand_dims(image, axis=0))[0]
                 print(predicted_image)
                 self.queue.append(predicted_image)

@@ -2,14 +2,9 @@ from tensorflow.keras.layers import (
     Dense,
     Dropout,
     Activation,
-    Flatten,
-    Convolution2D,
     MaxPooling2D,
-    BatchNormalization,
     Conv2D,
-    Input,
     AveragePooling2D,
-    concatenate,
     GlobalAveragePooling2D,
     Add
 )
@@ -32,7 +27,6 @@ class RecModel(object):
         for layer in Smodel.layers[:layer_num]:
             layer.trainable = False
 
-        inp = Input(shape=self.input_size)
         inp_stream1 = Smodel.input
         inp_stream2 = Smodel.output
 
@@ -54,7 +48,6 @@ class RecModel(object):
         #
         x = Dropout(0.3)(x)
         x = Dense(64, activation="relu", name="Dense2")(x)
-        # xf1 = Dropout(0.75)(xf1)
 
         # shape stream
         x1 = Conv2D(16, 3, activation='relu', padding='same', dilation_rate=1, name='CV21')(inp_stream2)
@@ -74,12 +67,9 @@ class RecModel(object):
         #
         x1 = Dropout(0.3)(x1)
         x1 = Dense(64, activation="relu", name="Dense22")(x1)
-        # xf2 = Dropout(0.45)(xf2)
 
-        # Concatenate
+        # Merge layers
         f = Add()([x, x1])
-        # f = Dropout(0.45)(f)
-        # f = Dense(64, activation="relu")(f)
 
         # Final Prediction
         prediction = Dense(self.num_class, activation='softmax')(f)
